@@ -40,7 +40,6 @@ func (p *Parser) getBlocksNumbersChan(ctx context.Context) chan int64 {
 				select {
 				case <-ctx.Done():
 					close(blocksNumbersChan)
-					fmt.Println("Shutdown getBlocksNumbersChan")
 
 					return
 
@@ -83,7 +82,6 @@ func (p *Parser) fetchBlocks(blocksNumbersChan chan int64) chan entity.Block {
 	go func() {
 		wg.Wait()
 		close(blocksChan)
-		fmt.Println("Shutdown fetchBlocks")
 	}()
 
 	return blocksChan
@@ -124,7 +122,6 @@ func (p *Parser) processBlocks(blocksChan chan entity.Block) chan TransactionWit
 	go func() {
 		wg.Wait()
 		close(transactionsChan)
-		fmt.Println("Shutdown processBlocks")
 	}()
 
 	return transactionsChan
@@ -148,5 +145,4 @@ func (p *Parser) saveTransactions(transactionsChan chan TransactionWithAddress) 
 	}
 
 	wg.Wait()
-	fmt.Println("Shutdown saveTransactions")
 }

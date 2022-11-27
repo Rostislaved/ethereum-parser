@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/Rostislaved/ethereum-parser/internal/app/adapters/httpAdapter"
 	"github.com/Rostislaved/ethereum-parser/internal/app/config"
 	"github.com/Rostislaved/ethereum-parser/internal/app/entity"
@@ -49,16 +48,12 @@ func main() {
 	go func() {
 		defer wg.Done()
 		parser.Start(ctx)
-
-		fmt.Println("Shutdown parser")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		httpAdapter.Start()
-
-		fmt.Println("Shutdown web server")
 	}()
 
 	signalListener := signalListener.New()
