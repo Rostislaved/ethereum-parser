@@ -7,7 +7,7 @@ import (
 
 type Storage struct {
 	m    map[string][]entity.Transaction
-	rwmu sync.RWMutex
+	rwmu *sync.RWMutex
 }
 
 func New() *Storage {
@@ -17,6 +17,6 @@ func New() *Storage {
 
 	return &Storage{
 		m:    m,
-		rwmu: rwmu,
+		rwmu: &rwmu,
 	}
 }

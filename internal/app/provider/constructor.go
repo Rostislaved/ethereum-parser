@@ -1,14 +1,15 @@
 package provider
 
 import (
+	"github.com/Rostislaved/ethereum-parser/internal/app/config"
 	"math/big"
 	"net/http"
 	"time"
 )
 
 type Provider struct {
+	config       config.Provider
 	client       http.Client
-	url          string
 	hexconverter hexconverter
 }
 
@@ -17,16 +18,14 @@ type hexconverter interface {
 	EncodeUint64(input uint64) string
 }
 
-func New(hexconverter hexconverter) *Provider {
+func New(config config.Provider, hexconverter hexconverter) *Provider {
 	client := http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: time.Duration(config.ClientTimeoutInSecs) * time.Second,
 	}
 
-	url := "https://cloudflare-eth.com"
-
 	return &Provider{
+		config:       config,
 		client:       client,
-		url:          url,
 		hexconverter: hexconverter,
 	}
 }

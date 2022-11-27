@@ -1,7 +1,7 @@
 package hexconverter
 
 import (
-	"github.com/Rostislaved/ethereum-parser/internal/pkg/hexconverter/hexutil"
+	"github.com/ethereum/go-ethereum/common/hexutil" // I used lib, but it is easily switchable
 	"math/big"
 )
 

@@ -24,12 +24,12 @@ type Provider interface {
 	GetBlockByNumber(number int64, full bool) (block entity.Block, err error)
 }
 
-func New(cfg config.Parser, storage Storage, provider Provider, initalBlockNumber int64) *Parser {
+func New(cfg config.Parser, storage Storage, provider Provider) *Parser {
 	subscribedAddressesSet := make(map[string]struct{})
 
 	return &Parser{
 		config:                 cfg,
-		lastParsedBlockNumber:  initalBlockNumber,
+		lastParsedBlockNumber:  cfg.InitialBlockNumber,
 		subscribedAddressesSet: subscribedAddressesSet,
 		storage:                storage,
 		provider:               provider,

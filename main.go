@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/Rostislaved/ethereum-parser/internal/app/adapters/httpAdapter"
 	"github.com/Rostislaved/ethereum-parser/internal/app/config"
 	"github.com/Rostislaved/ethereum-parser/internal/app/entity"
@@ -9,9 +10,9 @@ import (
 	"github.com/Rostislaved/ethereum-parser/internal/app/provider"
 	"github.com/Rostislaved/ethereum-parser/internal/app/storage/inmemory_storage"
 	"github.com/Rostislaved/ethereum-parser/internal/pkg/hexconverter"
-	"os"
-	"os/signal"
-	"syscall"
+	signalListener "github.com/Rostislaved/ethereum-parser/internal/pkg/signal-listener"
+	"log"
+	"sync"
 )
 
 var _ Parser = (*parser.Parser)(nil) // parser implements the interface
@@ -28,40 +29,54 @@ type Parser interface {
 }
 
 func main() {
-	var initialBlockNumber int64 = 16050110
-
-	cfg := config.Parser{
-		IntervalInSecs:            5,
-		InitialBlockNumber:        16050110,
-		NumberOfFetchingWorkers:   10,
-		NumberOfProcessingWorkers: 100,
-		NumberOfSavingWorkers:     10,
-	}
+	config := config.Get()
 
 	hexconverter := hexconverter.New()
 
-	prv := provider.New(hexconverter)
+	prv := provider.New(config.Provider, hexconverter)
 
 	storage := inMemoryStorage.New()
 
-	parser := parser.New(cfg, storage, prv, initialBlockNumber)
+	parser := parser.New(config.Parser, storage, prv)
+
+	httpAdapter := httpAdapter.New(config.Server, parser)
+
+	var wg sync.WaitGroup
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	signalChan := make(chan os.Signal)
-	signal.Notify(
-		signalChan,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-
+	wg.Add(1)
 	go func() {
-		<-signalChan
-		cancel()
+		defer wg.Done()
+		parser.Start(ctx)
+
+		fmt.Println("Shutdown parser")
 	}()
 
-	go parser.Start(ctx)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		httpAdapter.Start()
 
-	httpAdapter := httpAdapter.New(parser)
+		fmt.Println("Shutdown web server")
+	}()
 
-	httpAdapter.Start()
+	signalListener := signalListener.New()
+
+	select {
+	case err := <-httpAdapter.Notify():
+		log.Println(err)
+
+	case signal := <-signalListener.Notify():
+		log.Printf("\nCaught signal: %v. Exiting...\n", signal)
+
+		err := httpAdapter.Shutdown()
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
+	cancel()
+
+	wg.Wait()
 }

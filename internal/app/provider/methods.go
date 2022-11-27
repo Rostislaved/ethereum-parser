@@ -10,24 +10,18 @@ import (
 	"strings"
 )
 
+const (
+	BlockNumber      = "eth_blockNumber"
+	GetBlockByNumber = "eth_getBlockByNumber"
+)
+
 func (p *Provider) GetLastBlockNumber() (int64, error) {
-	method := "eth_blockNumber"
 
-	jsonrpcRequest := jsonrpc.JSONRPCRequest{
-		Jsonrpc: "2.0",
-		Method:  method,
-		Params:  nil,
-		Id:      83,
-	}
+	requestString := jsonrpc.NewRequest(BlockNumber)
 
-	jsonString, err := jsonrpcRequest.ToJson()
-	if err != nil {
-		return 0, err
-	}
+	bodyReader := strings.NewReader(requestString)
 
-	bodyReader := strings.NewReader(jsonString)
-
-	request, err := http.NewRequest("POST", p.url, bodyReader)
+	request, err := http.NewRequest("POST", p.config.URL, bodyReader)
 	if err != nil {
 		return 0, err
 	}
@@ -47,7 +41,7 @@ func (p *Provider) GetLastBlockNumber() (int64, error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("got status code: %s", resp.StatusCode)
+		return 0, fmt.Errorf("got status code: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -55,7 +49,7 @@ func (p *Provider) GetLastBlockNumber() (int64, error) {
 		return 0, err
 	}
 
-	var dto jsonrpcDTO
+	var dto blockNumberDTO
 
 	err = json.Unmarshal(body, &dto)
 	if err != nil {
@@ -73,30 +67,13 @@ func (p *Provider) GetLastBlockNumber() (int64, error) {
 }
 
 func (p *Provider) GetBlockByNumber(number int64, full bool) (block entity.Block, err error) {
-	method := "eth_getBlockByNumber"
-
 	numberHex := p.hexconverter.EncodeUint64(uint64(number))
 
-	params, err := jsonrpc.MakeParams(numberHex, full)
-	if err != nil {
-		return entity.Block{}, err
-	}
+	requestString := jsonrpc.NewRequest(GetBlockByNumber, numberHex, full)
 
-	jsonrpcRequest := jsonrpc.JSONRPCRequest{
-		Jsonrpc: "2.0",
-		Method:  method,
-		Params:  params,
-		Id:      83,
-	}
+	bodyReader := strings.NewReader(requestString)
 
-	jsonString, err := jsonrpcRequest.ToJson()
-	if err != nil {
-		return entity.Block{}, err
-	}
-
-	bodyReader := strings.NewReader(jsonString)
-
-	request, err := http.NewRequest("POST", p.url, bodyReader)
+	request, err := http.NewRequest("POST", p.config.URL, bodyReader)
 	if err != nil {
 		return entity.Block{}, err
 	}
@@ -116,7 +93,7 @@ func (p *Provider) GetBlockByNumber(number int64, full bool) (block entity.Block
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return entity.Block{}, fmt.Errorf("got status code: %s", resp.StatusCode)
+		return entity.Block{}, fmt.Errorf("got status code: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -134,10 +111,4 @@ func (p *Provider) GetBlockByNumber(number int64, full bool) (block entity.Block
 	block = dto.Result
 
 	return block, nil
-}
-
-type blockDTO struct {
-	Jsonrpc string       `json:"jsonrpc"`
-	Result  entity.Block `json:"result"`
-	Id      int          `json:"id"`
 }

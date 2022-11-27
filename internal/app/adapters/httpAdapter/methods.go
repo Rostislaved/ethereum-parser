@@ -1,20 +1,39 @@
 package httpAdapter
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func (a *HttpAdapter) Start() {
-	err := http.ListenAndServe(":8080", a.getMux())
-	if err != nil {
-		log.Fatalln(err)
-	}
+	log.Println("Server started")
+
+	err := a.server.ListenAndServe()
+
+	a.notify <- err
+
+	close(a.notify)
 }
 
+func (a *HttpAdapter) Notify() <-chan error {
+	return a.notify
+}
+func (a *HttpAdapter) Shutdown() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(a.config.ShutdownTimeout)*time.Second)
+	defer cancel()
+
+	err := a.server.Shutdown(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 func (a *HttpAdapter) getMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -60,7 +79,10 @@ func (a *HttpAdapter) getTransactions(writer http.ResponseWriter, request *http.
 		return
 	}
 
-	writer.Write(transactionsJsonBytes)
+	_, err = writer.Write(transactionsJsonBytes)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (a *HttpAdapter) getStorageInfo(writer http.ResponseWriter, request *http.Request) {
@@ -71,5 +93,8 @@ func (a *HttpAdapter) getStorageInfo(writer http.ResponseWriter, request *http.R
 		return
 	}
 
-	writer.Write(storageInfoJsonBytes)
+	_, err = writer.Write(storageInfoJsonBytes)
+	if err != nil {
+		log.Println(err)
+	}
 }
